@@ -1408,6 +1408,8 @@ process_nick(StateData, From, NewNick) ->
 												 <<"member">>},
 												{<<"role">>,
 												 <<"participant">>},
+												{<<"from">>,
+												FromUser},
 												{<<"nick">>,
 												 Nick}],
 											   children
