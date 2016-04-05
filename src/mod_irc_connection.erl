@@ -1424,7 +1424,7 @@ process_nick(StateData, From, NewNick) ->
 			  end,
 				      (?SETS):add_element(Nick,
 							  remove_element(FromUser,
-									 Ps)),
+									 Ps));
 			end,
 			StateData#state.channels),
     if FromUser == StateData#state.nick ->
