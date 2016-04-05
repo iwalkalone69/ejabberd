@@ -635,6 +635,8 @@ handle_info({ircstring, <<$:, String/binary>>},
 			 process_quit(StateData, From, String);
 		     [From, <<"JOIN">>, Chan | _] ->
 			 process_join(StateData, Chan, From, String);
+		     [From, <<"NICK">>, Nick | _] ->
+			 process_nick(StateData, From, Nick);
 		     [From, <<"MODE">>, <<$#, Chan/binary>>, <<"+o">>, Nick
 		      | _] ->
 			 process_mode_o(StateData, Chan, From, Nick,
@@ -648,8 +650,6 @@ handle_info({ircstring, <<$:, String/binary>>},
 		     [From, <<"KICK">>, <<$#, Chan/binary>>, Nick | _] ->
 			 process_kick(StateData, Chan, From, Nick, String),
 			 StateData;
-		     [From, <<"NICK">>, Nick | _] ->
-			 process_nick(StateData, From, Nick);
 		     _ ->
 			 ?DEBUG("unknown irc command '~s'~n", [String]),
 			 StateData
