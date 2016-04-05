@@ -1406,6 +1406,8 @@ process_nick(StateData, From, NewNick) ->
 												 <<"member">>},
 												{<<"role">>,
 												 <<"participant">>},
+												{<<"state_nick">>,
+												StateData#state.nick},
 												{<<"from">>,
 												From},
 												{<<"from_user">>,
