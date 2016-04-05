@@ -1371,9 +1371,6 @@ process_nick(StateData, From, NewNick) ->
     [FromUser | _] = str:tokens(From, <<"!">>),
     [_ | Nick] = binary:split(NewNick, <<":">>),
     NewChans = dict:map(fun (Chan, Ps) ->
-				(?SETS):add_element(Nick,
-				    remove_element(FromUser,
-						Ps)),
 				case (?SETS):is_member(FromUser, Ps) of
 				  true ->
 				      ejabberd_router:route(jid:make(
@@ -1424,7 +1421,10 @@ process_nick(StateData, From, NewNick) ->
 												 <<"303">>}],
 											   children
 											       =
-											       []}]}]});
+											       []}]}]}),
+					(?SETS):add_element(Nick,
+				        (?SETS):del_element(FromUser,
+						    Ps));
 				  _ -> Ps
 				end
 			end,
