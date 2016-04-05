@@ -1422,9 +1422,8 @@ process_nick(StateData, From, NewNick) ->
 											   children
 											       =
 											       []}]}]}),
-					(?SETS):add_element(Nick,
-				        (?SETS):del_element(FromUser,
-						    Ps));
+				    (?SETS):del_element(FromUser, Ps),
+					(?SETS):add_element(Nick, Ps);
 				  _ -> Ps
 				end
 			end,
