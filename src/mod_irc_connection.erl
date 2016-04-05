@@ -1371,6 +1371,9 @@ process_nick(StateData, From, NewNick) ->
     [FromUser | _] = str:tokens(From, <<"!">>),
     [_ | Nick] = binary:split(NewNick, <<":">>),
     NewChans = dict:map(fun (Chan, Ps) ->
+				(?SETS):add_element(Nick,
+				    remove_element(FromUser,
+						Ps)),
 				case (?SETS):is_member(FromUser, Ps) of
 				  true ->
 				      ejabberd_router:route(jid:make(
@@ -1385,7 +1388,7 @@ process_nick(StateData, From, NewNick) ->
 								       <<"presence">>,
 								   attrs =
 								       [{<<"type">>,
-									 <<"unavailable">>}],
+									 <<"particpant">>}],
 								   children =
 								       [#xmlel{name
 										   =
@@ -1421,10 +1424,7 @@ process_nick(StateData, From, NewNick) ->
 											       =
 											       []}]}]});
 				  _ -> Ps
-			  end,
-				      (?SETS):add_element(Nick,
-							  remove_element(FromUser,
-									 Ps)),
+				end
 			end,
 			StateData#state.channels),
     if FromUser == StateData#state.nick ->
