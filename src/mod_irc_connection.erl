@@ -1289,6 +1289,8 @@ process_join(StateData, Channel, From, _String) ->
 							 attrs =
 							     [{<<"affiliation">>,
 							       <<"member">>},
+							      {<<"state_nick">>,
+							       StateData#state.nick},
 							      {<<"role">>,
 							       <<"participant">>}],
 							 children = []}]},
@@ -1433,8 +1435,8 @@ process_nick(StateData, From, NewNick) ->
 				end
 			end,
 			StateData#state.channels),
-    if FromUser == StateData#state.nick ->
-	   StateData#state{nick = FromUser, nickchannel = undefined,
+    if From == StateData#state.nick ->
+	   StateData#state{nick = From, nickchannel = undefined,
 			   channels = NewChans};
        true -> StateData#state{channels = NewChans}
     end.
