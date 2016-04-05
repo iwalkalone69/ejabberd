@@ -1406,7 +1406,11 @@ process_nick(StateData, From, NewNick) ->
 												{<<"role">>,
 												 <<"participant">>},
 												{<<"from">>,
+												From},
+												{<<"from_user">>,
 												FromUser},
+												{<<"new_nick">>,
+												NewNick},
 												{<<"nick">>,
 												 Nick}],
 											   children
@@ -1422,8 +1426,7 @@ process_nick(StateData, From, NewNick) ->
 											   children
 											       =
 											       []}]}]}),
-				    remove_element(FromUser, Ps),
-					(?SETS):add_element(Nick, Ps);
+					(?SETS):add_element(Nick, remove_element(FromUser, Ps));
 				  _ -> Ps
 				end
 			end,
