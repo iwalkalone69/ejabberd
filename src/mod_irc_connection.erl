@@ -1432,7 +1432,7 @@ process_nick(StateData, From, NewNick) ->
 			end,
 			StateData#state.channels),
     if FromUser == StateData#state.nick ->
-	   StateData#state{nick = Nick, nickchannel = undefined,
+	   StateData#state{nick = FromUser, nickchannel = undefined,
 			   channels = NewChans};
        true -> StateData#state{channels = NewChans}
     end.
