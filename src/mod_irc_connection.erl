@@ -806,7 +806,7 @@ process_lines(Encoding, [S | Ss]) ->
 
 process_channel_list(StateData, Items) ->
     process_channel_list_find_chan(StateData, Items),
-    Chan = $#,
+    [Chan , _] = binary:split(Items, <<"%">>),
     ejabberd_router:route(jid:make(iolist_to_binary([Chan,
                                                           <<"%">>,
                                                           StateData#state.server]),
