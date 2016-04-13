@@ -583,7 +583,7 @@ handle_info({ircstring, <<$:, String/binary>>},
     NewStateData = case Words of
 		     [_, <<"353">> | Items] ->
 			 process_channel_list(StateData, Items);
-		     [_, <<"366">>, _Nick, Chan | _] ->
+		     [_, <<"366">>, _Nick, <<$#, Chan/binary>> | _] ->
 			 process_channel_list_end(StateData, Chan);
 		     [_, <<"332">>, _Nick, <<$#, Chan/binary>> | _] ->
 			 process_channel_topic(StateData, Chan, String),
