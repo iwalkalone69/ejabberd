@@ -810,6 +810,7 @@ process_channel_list(StateData, Items) ->
     process_channel_list_find_chan(StateData, Items).
 
 process_channel_list_end(StateData, Chan) ->
+    Chan = ejabberd_regexp:replace(Chan, <<"#">>, <<"">>),
     ejabberd_router:route(jid:make(iolist_to_binary([Chan,
                                                           <<"%">>,
                                                           StateData#state.server]),
