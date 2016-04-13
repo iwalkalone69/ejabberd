@@ -1182,7 +1182,7 @@ process_part(StateData, Chan, From, String) ->
     [FromUser | FromIdent] = str:tokens(From, <<"!">>),
     Msg = ejabberd_regexp:replace(String,
                                   <<".*PART[^:]*:?">>, <<"">>),
-    Msg1 = filter_message(Msg),
+    Msg1 = filter_message(String),
     ejabberd_router:route(jid:make(iolist_to_binary(
                                           [Chan,
                                            <<"%">>,
@@ -1202,7 +1202,7 @@ process_part(StateData, Chan, From, String) ->
 							       <<"member">>},
 							      {<<"role">>,
 							       <<"none">>},
-                                                               {<<"message">>, Msg1}],
+                                                               {<<"message">>, filter_message(Msg)}],
 							 children = []}]},
 				      #xmlel{name = <<"status">>, attrs = [],
 					     children =
@@ -1221,8 +1221,8 @@ process_part(StateData, Chan, From, String) ->
 process_quit(StateData, From, String) ->
     [FromUser | FromIdent] = str:tokens(From, <<"!">>),
     Msg = ejabberd_regexp:replace(String,
-				  <<".*QUIT[^:]*:">>, <<"">>),
-    Msg1 = filter_message(Msg),
+				  <<".*QUIT[^:]*:?">>, <<"">>),
+    Msg1 = filter_message(String),
     dict:map(fun (Chan, Ps) ->
 		     case (?SETS):is_member(FromUser, Ps) of
 		       true ->
@@ -1252,7 +1252,8 @@ process_quit(StateData, From, String) ->
 										    [{<<"affiliation">>,
 										      <<"member">>},
 										     {<<"role">>,
-										      <<"none">>}],
+										      <<"none">>},
+                                                                                     {<<"message">>, filter_message(Msg)}],
 										children
 										    =
 										    []}]},
