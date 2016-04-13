@@ -583,8 +583,8 @@ handle_info({ircstring, <<$:, String/binary>>},
     NewStateData = case Words of
 		     [_, <<"353">> | Items] ->
 			 process_channel_list(StateData, Items);
-		     [_, <<"366">> | Items] ->
-			 process_channel_list_end(StateData, Items);
+		     [_, <<"366">>, _, Chan] ->
+			 process_channel_list_end(StateData, Chan);
 		     [_, <<"332">>, _Nick, <<$#, Chan/binary>> | _] ->
 			 process_channel_topic(StateData, Chan, String),
 			 StateData;
@@ -809,8 +809,7 @@ process_lines(Encoding, [S | Ss]) ->
 process_channel_list(StateData, Items) ->
     process_channel_list_find_chan(StateData, Items).
 
-process_channel_list_end(StateData, Items) ->
-    [Chan , _] = binary:split(Items, <<"%">>),
+process_channel_list_end(StateData, Chan) ->
     ejabberd_router:route(jid:make(iolist_to_binary([Chan,
                                                           <<"%">>,
                                                           StateData#state.server]),
