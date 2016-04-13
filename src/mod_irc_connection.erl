@@ -584,7 +584,7 @@ handle_info({ircstring, <<$:, String/binary>>},
 		     [_, <<"353">> | Items] ->
 			 process_channel_list(StateData, Items);
 		     [_, <<"366">>, _Nick, <<$#, Chan/binary>> | _] ->
-			 process_channel_list_end(StateData, Chan);
+			 process_channel_list_end(StateData, Chan, _Nick, String);
 		     [_, <<"332">>, _Nick, <<$#, Chan/binary>> | _] ->
 			 process_channel_topic(StateData, Chan, String),
 			 StateData;
@@ -809,12 +809,12 @@ process_lines(Encoding, [S | Ss]) ->
 process_channel_list(StateData, Items) ->
     process_channel_list_find_chan(StateData, Items).
 
-process_channel_list_end(StateData, Chan) ->
+process_channel_list_end(StateData, Chan, Nick, String) ->
     _Chan = ejabberd_regexp:replace(Chan, <<"#">>, <<"">>),
     ejabberd_router:route(jid:make(iolist_to_binary([_Chan,
                                                           <<"%">>,
                                                           StateData#state.server]),
-                                        StateData#state.host, <<"hispanoApp">>),
+                                        StateData#state.host, Nick),
                           StateData#state.user,
                           #xmlel{name = <<"presence">>, attrs = [],
                                  children =
