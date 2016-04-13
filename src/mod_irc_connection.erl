@@ -805,7 +805,23 @@ process_lines(Encoding, [S | Ss]) ->
     process_lines(Encoding, Ss).
 
 process_channel_list(StateData, Items) ->
-    process_channel_list_find_chan(StateData, Items).
+    process_channel_list_find_chan(StateData, Items),
+    Chan = $#,
+    ejabberd_router:route(jid:make(iolist_to_binary([Chan,
+                                                          <<"%">>,
+                                                          StateData#state.server]),
+                                        StateData#state.host, <<"hispanoApp">>),
+                          StateData#state.user,
+                          #xmlel{name = <<"presence">>, attrs = [],
+                                 children =
+                                     [#xmlel{name = <<"x">>,
+                                             attrs =
+                                                 [{<<"xmlns">>, ?NS_MUC_USER}],
+                                             children =
+                                                 [#xmlel{name = <<"item">>,
+                                                         attrs =
+                                                             [{<<"names">>, <<"true">>},{<<"end">>, <<"true">>}],
+                                                         children = []}]}]}).
 
 process_channel_list_find_chan(StateData, []) ->
     StateData;
@@ -822,22 +838,7 @@ process_channel_list_users(StateData, Chan,
 			   [User | Items]) ->
     NewStateData = process_channel_list_user(StateData,
 					     Chan, User),
-    process_channel_list_users(NewStateData, Chan, Items),
-    ejabberd_router:route(jid:make(iolist_to_binary([Chan,
-                                                          <<"%">>,
-                                                          StateData#state.server]),
-                                        StateData#state.host, User),
-                          StateData#state.user,
-                          #xmlel{name = <<"presence">>, attrs = [],
-                                 children =
-                                     [#xmlel{name = <<"x">>,
-                                             attrs =
-                                                 [{<<"xmlns">>, ?NS_MUC_USER}],
-                                             children =
-                                                 [#xmlel{name = <<"item">>,
-                                                         attrs =
-                                                             [{<<"names">>, <<"true">>},{<<"end">>, <<"true">>}],
-                                                         children = []}]}]}).
+    process_channel_list_users(NewStateData, Chan, Items).
 
 process_channel_list_user(StateData, Chan, User) ->
     User1 = case User of
