@@ -1351,9 +1351,8 @@ process_kick(StateData, Chan, From, Nick, String) ->
 							 children = []},
 						  #xmlel{name = <<"status">>,
 							 attrs =
-							     [{<<"code">>,
-							       <<"307">>},
-                                                              {<<"moderator">>, From/binary},
+							     [{<<"code">>, <<"307">>},
+                                                              {<<"moderator">>, From},
                                                               {<<"message">>, (filter_message(Msg))/binary}],
 							 children = []}]}]}).
 
