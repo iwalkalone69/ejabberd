@@ -584,7 +584,8 @@ handle_info({ircstring, <<$:, String/binary>>},
 		     [_, <<"353">> | Items] ->
 			 process_channel_list(StateData, Items);
 		     [_, <<"366">>, _Nick, <<$#, Chan/binary>> | _] ->
-			 process_channel_list_end(StateData, Chan, _Nick, String);
+			 process_channel_list_end(StateData, Chan, _Nick, String),
+                         StateData;
 		     [_, <<"332">>, _Nick, <<$#, Chan/binary>> | _] ->
 			 process_channel_topic(StateData, Chan, String),
 			 StateData;
