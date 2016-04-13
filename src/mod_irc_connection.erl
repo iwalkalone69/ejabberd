@@ -1330,7 +1330,8 @@ process_mode_o(StateData, Chan, _From, Nick,
 							 children = []}]}]}).
 
 process_kick(StateData, Chan, From, Nick, String) ->
-    Msg = lists:last(str:tokens(String, <<":">>)),
+    Msg = ejabberd_regexp:replace(String,
+                                  <<".*KICK[^:]*:">>, <<"">>),
     ejabberd_router:route(jid:make(iolist_to_binary(
                                           [Chan,
                                            <<"%">>,
