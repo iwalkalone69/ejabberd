@@ -1201,7 +1201,8 @@ process_part(StateData, Chan, From, String) ->
 							     [{<<"affiliation">>,
 							       <<"member">>},
 							      {<<"role">>,
-							       <<"none">>}],
+							       <<"none">>},
+                                                               {<<"message">>, Msg1}],
 							 children = []}]},
 				      #xmlel{name = <<"status">>, attrs = [],
 					     children =
