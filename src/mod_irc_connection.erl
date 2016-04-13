@@ -1182,6 +1182,7 @@ process_part(StateData, Chan, From, String) ->
     [FromUser | FromIdent] = str:tokens(From, <<"!">>),
     Msg = ejabberd_regexp:replace(String,
 				  <<".*PART[^:]*:">>, <<"">>),
+    Reason = ejabberd_regexp:replace(String, <<"[^:]+:">> <<"">),
     Msg1 = filter_message(Msg),
     ejabberd_router:route(jid:make(iolist_to_binary(
                                           [Chan,
@@ -1202,7 +1203,7 @@ process_part(StateData, Chan, From, String) ->
 							       <<"member">>},
 							      {<<"role">>,
 							       <<"none">>},
-                                                               {<<"message">>, Msg1}],
+                                                               {<<"message">>, Reason}],
 							 children = []}]},
 				      #xmlel{name = <<"status">>, attrs = [],
 					     children =
