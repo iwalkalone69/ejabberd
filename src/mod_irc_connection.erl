@@ -581,10 +581,6 @@ handle_info({ircstring, <<$:, String/binary>>},
 	    _StateName, StateData) ->
     Words = str:tokens(String, <<" ">>),
     NewStateData = case Words of
-		     [_, <<"001">> | Items] ->
-			 process_info_numeric(<<"001">>, StateData, Items);
-		     [_, <<"002">> | Items] ->
-			 process_info_numeric(<<"002">>, StateData, Items);
 		     [_, <<"353">> | Items] ->
 			 process_channel_list(StateData, Items);
 		     [_, <<"366">>, _Nick, <<$#, Chan/binary>> | _] ->
