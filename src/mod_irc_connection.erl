@@ -550,7 +550,7 @@ handle_info({ircstring, <<$:, String/binary>>},
 				 [_, <<"001">> | _] ->
 				     send_text(StateData,
 					       io_lib:format("~s\r\n",
-							     String])),
+							     [String])),
 				     {stream_established, StateData};
 				 [_, <<"002">> | _] ->
 				     send_text(StateData,
