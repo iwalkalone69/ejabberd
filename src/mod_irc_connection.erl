@@ -552,6 +552,86 @@ handle_info({ircstring, <<$:, String/binary>>},
 					       io_lib:format("CODEPAGE ~s\r\n",
 							     [StateData#state.encoding])),
 				     {stream_established, StateData};
+				 [_, <<"002">> | _] ->
+				     send_text(StateData,
+					       io_lib:format("CODEPAGE ~s\r\n",
+							     [StateData#state.encoding])),
+				     {stream_established, StateData};
+				 [_, <<"003">> | _] ->
+				     send_text(StateData,
+					       io_lib:format("CODEPAGE ~s\r\n",
+							     [StateData#state.encoding])),
+				     {stream_established, StateData};
+				 [_, <<"004">> | _] ->
+				     send_text(StateData,
+					       io_lib:format("CODEPAGE ~s\r\n",
+							     [StateData#state.encoding])),
+				     {stream_established, StateData};
+				 [_, <<"005">> | _] ->
+				     send_text(StateData,
+					       io_lib:format("CODEPAGE ~s\r\n",
+							     [StateData#state.encoding])),
+				     {stream_established, StateData};
+				 [_, <<"006">> | _] ->
+				     send_text(StateData,
+					       io_lib:format("CODEPAGE ~s\r\n",
+							     [StateData#state.encoding])),
+				     {stream_established, StateData};
+				 [_, <<"007">> | _] ->
+				     send_text(StateData,
+					       io_lib:format("CODEPAGE ~s\r\n",
+							     [StateData#state.encoding])),
+				     {stream_established, StateData};
+				 [_, <<"008">> | _] ->
+				     send_text(StateData,
+					       io_lib:format("CODEPAGE ~s\r\n",
+							     [StateData#state.encoding])),
+				     {stream_established, StateData};
+				 [_, <<"009">> | _] ->
+				     send_text(StateData,
+					       io_lib:format("CODEPAGE ~s\r\n",
+							     [StateData#state.encoding])),
+				     {stream_established, StateData};
+				 [_, <<"010">> | _] ->
+				     send_text(StateData,
+					       io_lib:format("CODEPAGE ~s\r\n",
+							     [StateData#state.encoding])),
+				     {stream_established, StateData};
+				 [_, <<"011">> | _] ->
+				     send_text(StateData,
+					       io_lib:format("CODEPAGE ~s\r\n",
+							     [StateData#state.encoding])),
+				     {stream_established, StateData};
+				 [_, <<"012">> | _] ->
+				     send_text(StateData,
+					       io_lib:format("CODEPAGE ~s\r\n",
+							     [StateData#state.encoding])),
+				     {stream_established, StateData};
+				 [_, <<"013">> | _] ->
+				     send_text(StateData,
+					       io_lib:format("CODEPAGE ~s\r\n",
+							     [StateData#state.encoding])),
+				     {stream_established, StateData};
+				 [_, <<"014">> | _] ->
+				     send_text(StateData,
+					       io_lib:format("CODEPAGE ~s\r\n",
+							     [StateData#state.encoding])),
+				     {stream_established, StateData};
+				 [_, <<"015">> | _] ->
+				     send_text(StateData,
+					       io_lib:format("CODEPAGE ~s\r\n",
+							     [StateData#state.encoding])),
+				     {stream_established, StateData};
+				 [_, <<"016">> | _] ->
+				     send_text(StateData,
+					       io_lib:format("CODEPAGE ~s\r\n",
+							     [StateData#state.encoding])),
+				     {stream_established, StateData};
+				 [_, <<"017">> | _] ->
+				     send_text(StateData,
+					       io_lib:format("CODEPAGE ~s\r\n",
+							     [StateData#state.encoding])),
+				     {stream_established, StateData};
 				 [_, <<"433">> | _] ->
 				     {error,
 				      {error,
