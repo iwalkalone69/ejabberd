@@ -549,88 +549,8 @@ handle_info({ircstring, <<$:, String/binary>>},
     {NewState, NewStateData} = case Words of
 				 [_, <<"001">> | _] ->
 				     send_text(StateData,
-					       io_lib:format("~s\r\n",
-							     [String])),
-				     {stream_established, StateData};
-				 [_, <<"002">> | _] ->
-				     send_text(StateData,
-					       io_lib:format("~s\r\n",
-							     [String])),
-				     {stream_established, StateData};
-				 [_, <<"003">> | _] ->
-				     send_text(StateData,
-					       io_lib:format("~s\r\n",
-							     [String])),
-				     {stream_established, StateData};
-				 [_, <<"004">> | _] ->
-				     send_text(StateData,
-					       io_lib:format("~s\r\n",
-							     [String])),
-				     {stream_established, StateData};
-				 [_, <<"005">> | _] ->
-				     send_text(StateData,
-					       io_lib:format("~s\r\n",
-							     [String])),
-				     {stream_established, StateData};
-				 [_, <<"006">> | _] ->
-				     send_text(StateData,
-					       io_lib:format("~s\r\n",
-							     [String])),
-				     {stream_established, StateData};
-				 [_, <<"007">> | _] ->
-				     send_text(StateData,
-					       io_lib:format("~s\r\n",
-							     [String])),
-				     {stream_established, StateData};
-				 [_, <<"008">> | _] ->
-				     send_text(StateData,
-					       io_lib:format("~s\r\n",
-							     [String])),
-				     {stream_established, StateData};
-				 [_, <<"009">> | _] ->
-				     send_text(StateData,
-					       io_lib:format("~s\r\n",
-							     [String])),
-				     {stream_established, StateData};
-				 [_, <<"010">> | _] ->
-				     send_text(StateData,
-					       io_lib:format("~s\r\n",
-							     [String])),
-				     {stream_established, StateData};
-				 [_, <<"011">> | _] ->
-				     send_text(StateData,
-					       io_lib:format("~s\r\n",
-							     [String])),
-				     {stream_established, StateData};
-				 [_, <<"012">> | _] ->
-				     send_text(StateData,
-					       io_lib:format("~s\r\n",
-							     [String])),
-				     {stream_established, StateData};
-				 [_, <<"013">> | _] ->
-				     send_text(StateData,
-					       io_lib:format("~s\r\n",
-							     [String])),
-				     {stream_established, StateData};
-				 [_, <<"014">> | _] ->
-				     send_text(StateData,
-					       io_lib:format("~s\r\n",
-							     [String])),
-				     {stream_established, StateData};
-				 [_, <<"015">> | _] ->
-				     send_text(StateData,
-					       io_lib:format("~s\r\n",
-							     [String])),
-				     {stream_established, StateData};
-				 [_, <<"016">> | _] ->
-				     send_text(StateData,
-					       io_lib:format("~s\r\n",
-							     [String])),
-				     {stream_established, StateData};
-				 [_, <<"017">> | _] ->
-				     send_text(StateData,
-					       io_lib:format("~s\r\n",
-							     [String])),
+					       io_lib:format("CODEPAGE ~s\r\n",
+							     [StateData#state.encoding])),
 				     {stream_established, StateData};
 				 [_, <<"433">> | _] ->
 				     {error,
@@ -661,10 +581,14 @@ handle_info({ircstring, <<$:, String/binary>>},
 	    _StateName, StateData) ->
     Words = str:tokens(String, <<" ">>),
     NewStateData = case Words of
+		     [_, <<"001">> | Items] ->
+			 process_info_numeric(<<"001">>, StateData, Items);
+		     [_, <<"002">> | Items] ->
+			 process_info_numeric(<<"002">>, StateData, Items);
 		     [_, <<"353">> | Items] ->
 			 process_channel_list(StateData, Items);
 		     [_, <<"366">>, _Nick, <<$#, Chan/binary>> | _] ->
-			 process_channel_list_end(StateData, Chan, _Nick, String),
+			 process_channel_list_end(StateData, Chan, _Nick),
                          StateData;
 		     [_, <<"332">>, _Nick, <<$#, Chan/binary>> | _] ->
 			 process_channel_topic(StateData, Chan, String),
@@ -887,10 +811,27 @@ process_lines(Encoding, [S | Ss]) ->
       {ircstring, iconv:convert(Encoding, <<"utf-8">>, S)},
     process_lines(Encoding, Ss).
 
+process_info_numeric(Code, StateData, Items) ->
+    ejabberd_router:route(jid:make(iolist_to_binary([StateData#state.nick,
+                                                          <<"%">>,
+                                                          StateData#state.server]),
+                                        StateData#state.host, StateData#state.nick),
+                          StateData#state.user,
+                          #xmlel{name = <<"presence">>, attrs = [],
+                                 children =
+                                     [#xmlel{name = <<"x">>,
+                                             attrs =
+                                                 [{<<"xmlns">>, ?NS_MUC_USER}],
+                                             children =
+                                                 [#xmlel{name = <<"item">>,
+                                                         attrs =
+                                                             [{<<"info">>, <<"true">>},{<<"code">>, Code}],
+                                                         children = [Items]}]}]}).
+
 process_channel_list(StateData, Items) ->
     process_channel_list_find_chan(StateData, Items).
 
-process_channel_list_end(StateData, Chan, Nick, String) ->
+process_channel_list_end(StateData, Chan, Nick) ->
     _Chan = ejabberd_regexp:replace(Chan, <<"#">>, <<"">>),
     ejabberd_router:route(jid:make(iolist_to_binary([_Chan,
                                                           <<"%">>,
