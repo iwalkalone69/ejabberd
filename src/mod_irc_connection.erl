@@ -712,7 +712,6 @@ terminate(_Reason, _StateName, FullStateData) ->
 					     <<"Server Connect Failed">>}]},
 				FullStateData}
 			 end,
-                  gen_tcp:close(StateData#state.socket),
     (StateData#state.mod):closed_connection(StateData#state.host,
                                             StateData#state.user,
                                             StateData#state.server),
