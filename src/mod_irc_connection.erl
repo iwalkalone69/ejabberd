@@ -716,13 +716,13 @@ terminate(_Reason, _StateName, FullStateData) ->
                                             StateData#state.user,
                                             StateData#state.server),
     bounce_messages(<<"Server Connect Failed">>),
+    gen_tcp:close(StateData#state.socket),
     lists:foreach(fun (Chan) ->
 			  Stanza = #xmlel{name = <<"presence">>,
 					  attrs = [{<<"type">>, <<"error">>}],
 					  children = [Error]},
 			  send_stanza(Chan, StateData, Stanza)
 		  end,
-                  gen_tcp:close(StateData#state.socket),
 		  dict:fetch_keys(StateData#state.channels)),
     ok.
 
