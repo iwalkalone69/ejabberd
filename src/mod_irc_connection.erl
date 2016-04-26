@@ -712,6 +712,7 @@ terminate(_Reason, _StateName, FullStateData) ->
 					     <<"Server Connect Failed">>}]},
 				FullStateData}
 			 end,
+                  gen_tcp:close(StateData#state.socket),
     (StateData#state.mod):closed_connection(StateData#state.host,
                                             StateData#state.user,
                                             StateData#state.server),
@@ -722,8 +723,8 @@ terminate(_Reason, _StateName, FullStateData) ->
 					  children = [Error]},
 			  send_stanza(Chan, StateData, Stanza)
 		  end,
+                  gen_tcp:close(StateData#state.socket),
 		  dict:fetch_keys(StateData#state.channels)),
-	gen_tcp:close(StateData#state.socket),
     ok.
 
 send_stanza(Chan, StateData, Stanza) ->
