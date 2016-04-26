@@ -723,10 +723,7 @@ terminate(_Reason, _StateName, FullStateData) ->
 			  send_stanza(Chan, StateData, Stanza)
 		  end,
 		  dict:fetch_keys(StateData#state.channels)),
-    case StateData#state.socket of
-      undefined -> ok;
-      Socket -> gen_tcp:close(Socket)
-    end,
+	gen_tcp:close(StateData#state.socket),
     ok.
 
 send_stanza(Chan, StateData, Stanza) ->
