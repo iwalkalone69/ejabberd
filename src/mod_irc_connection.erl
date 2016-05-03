@@ -153,8 +153,9 @@ open_socket(init, StateData) ->
 					 [StateData#state.password]));
 	     true -> true
 	  end,
+          [_Nick, _] = binary:split(StateData#state.nick, <<"@">>),
 	  send_text(NewStateData,
-		    io_lib:format("NICK ~s\r\n", [StateData#state.nick])),
+		    io_lib:format("NICK ~s\r\n", [_Nick])),
 	  send_text(NewStateData,
 		    io_lib:format("USER ~s ~s ~s :~s\r\n",
 				  [StateData#state.ident,
