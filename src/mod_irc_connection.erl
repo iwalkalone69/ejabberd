@@ -945,7 +945,7 @@ process_channel_topic_who(StateData, Chan, String) ->
 				 attrs = [{<<"type">>, <<"groupchat">>}],
 				 children =
 				     [#xmlel{name = <<"body">>, attrs = [],
-					     children = [{xmlcdata, Msg}]}]}).
+					     children = [{xmlcdata, Msg1}]}]}).
 
 error_nick_in_use(_StateData, String) ->
     Msg = ejabberd_regexp:replace(String,
