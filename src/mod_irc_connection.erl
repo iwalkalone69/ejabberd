@@ -153,8 +153,9 @@ open_socket(init, StateData) ->
 					 [StateData#state.password]));
 	     true -> true
 	  end,
+          [_Nick, _] = binary:split(StateData#state.nick, <<"@">>),
 	  send_text(NewStateData,
-		    io_lib:format("NICK ~s\r\n", [StateData#state.nick])),
+		    io_lib:format("NICK ~s\r\n", [_Nick])),
 	  send_text(NewStateData,
 		    io_lib:format("USER ~s ~s ~s :~s\r\n",
 				  [StateData#state.ident,
@@ -583,6 +584,9 @@ handle_info({ircstring, <<$:, String/binary>>},
     NewStateData = case Words of
 		     [_, <<"353">> | Items] ->
 			 process_channel_list(StateData, Items);
+		     [_, <<"366">>, _Nick, <<$#, Chan/binary>> | _] ->
+			 process_channel_list_end(StateData, Chan, _Nick),
+                         StateData;
 		     [_, <<"332">>, _Nick, <<$#, Chan/binary>> | _] ->
 			 process_channel_topic(StateData, Chan, String),
 			 StateData;
@@ -713,6 +717,7 @@ terminate(_Reason, _StateName, FullStateData) ->
                                             StateData#state.user,
                                             StateData#state.server),
     bounce_messages(<<"Server Connect Failed">>),
+    gen_tcp:close(StateData#state.socket),
     lists:foreach(fun (Chan) ->
 			  Stanza = #xmlel{name = <<"presence">>,
 					  attrs = [{<<"type">>, <<"error">>}],
@@ -720,10 +725,6 @@ terminate(_Reason, _StateName, FullStateData) ->
 			  send_stanza(Chan, StateData, Stanza)
 		  end,
 		  dict:fetch_keys(StateData#state.channels)),
-    case StateData#state.socket of
-      undefined -> ok;
-      Socket -> gen_tcp:close(Socket)
-    end,
     ok.
 
 send_stanza(Chan, StateData, Stanza) ->
@@ -804,8 +805,43 @@ process_lines(Encoding, [S | Ss]) ->
       {ircstring, iconv:convert(Encoding, <<"utf-8">>, S)},
     process_lines(Encoding, Ss).
 
+process_info_numeric(Code, StateData, Items) ->
+    ejabberd_router:route(jid:make(iolist_to_binary([StateData#state.nick,
+                                                          <<"%">>,
+                                                          StateData#state.server]),
+                                        StateData#state.host, StateData#state.nick),
+                          StateData#state.user,
+                          #xmlel{name = <<"presence">>, attrs = [],
+                                 children =
+                                     [#xmlel{name = <<"x">>,
+                                             attrs =
+                                                 [{<<"xmlns">>, ?NS_MUC_USER}],
+                                             children =
+                                                 [#xmlel{name = <<"item">>,
+                                                         attrs =
+                                                             [{<<"info">>, <<"true">>},{<<"code">>, Code}],
+                                                         children = [Items]}]}]}).
+
 process_channel_list(StateData, Items) ->
     process_channel_list_find_chan(StateData, Items).
+
+process_channel_list_end(StateData, Chan, Nick) ->
+    _Chan = ejabberd_regexp:replace(Chan, <<"#">>, <<"">>),
+    ejabberd_router:route(jid:make(iolist_to_binary([_Chan,
+                                                          <<"%">>,
+                                                          StateData#state.server]),
+                                        StateData#state.host, Nick),
+                          StateData#state.user,
+                          #xmlel{name = <<"presence">>, attrs = [],
+                                 children =
+                                     [#xmlel{name = <<"x">>,
+                                             attrs =
+                                                 [{<<"xmlns">>, ?NS_MUC_USER}],
+                                             children =
+                                                 [#xmlel{name = <<"item">>,
+                                                         attrs =
+                                                             [{<<"names">>, <<"true">>},{<<"end">>, <<"true">>}],
+                                                         children = []}]}]}).
 
 process_channel_list_find_chan(StateData, []) ->
     StateData;
@@ -858,7 +894,8 @@ process_channel_list_user(StateData, Chan, User) ->
 							     [{<<"affiliation">>,
 							       Affiliation},
 							      {<<"role">>,
-							       Role}],
+							       Role},
+                                                              {<<"names">>, <<"true">>}],
 							 children = []}]}]}),
     case catch dict:update(Chan,
 			   fun (Ps) -> (?SETS):add_element(User2, Ps) end,
@@ -871,7 +908,6 @@ process_channel_list_user(StateData, Chan, User) ->
 process_channel_topic(StateData, Chan, String) ->
     Msg = ejabberd_regexp:replace(String, <<".*332[^:]*:">>,
 				  <<"">>),
-    Msg1 = filter_message(Msg),
     ejabberd_router:route(jid:make(iolist_to_binary([Chan,
                                                           <<"%">>,
                                                           StateData#state.server]),
@@ -881,12 +917,12 @@ process_channel_topic(StateData, Chan, String) ->
 				 attrs = [{<<"type">>, <<"groupchat">>}],
 				 children =
 				     [#xmlel{name = <<"subject">>, attrs = [],
-					     children = [{xmlcdata, Msg1}]},
+					     children = [{xmlcdata, Msg}]},
 				      #xmlel{name = <<"body">>, attrs = [],
 					     children =
 						 [{xmlcdata,
 						   <<"Topic for #", Chan/binary,
-						     ": ", Msg1/binary>>}]}]}).
+						     ": ", Msg/binary>>}]}]}).
 
 process_channel_topic_who(StateData, Chan, String) ->
     Words = str:tokens(String, <<" ">>),
@@ -900,7 +936,6 @@ process_channel_topic_who(StateData, Chan, String) ->
 		   Whoset/binary>>;
 	     _ -> String
 	   end,
-    Msg2 = filter_message(Msg1),
     ejabberd_router:route(jid:make(iolist_to_binary([Chan,
                                                           <<"%">>,
                                                           StateData#state.server]),
@@ -910,12 +945,11 @@ process_channel_topic_who(StateData, Chan, String) ->
 				 attrs = [{<<"type">>, <<"groupchat">>}],
 				 children =
 				     [#xmlel{name = <<"body">>, attrs = [],
-					     children = [{xmlcdata, Msg2}]}]}).
+					     children = [{xmlcdata, Msg1}]}]}).
 
 error_nick_in_use(_StateData, String) ->
     Msg = ejabberd_regexp:replace(String,
 				  <<".*433 +[^ ]* +">>, <<"">>),
-    Msg1 = filter_message(Msg),
     #xmlel{name = <<"error">>,
 	   attrs =
 	       [{<<"code">>, <<"409">>}, {<<"type">>, <<"cancel">>}],
@@ -924,7 +958,7 @@ error_nick_in_use(_StateData, String) ->
 		       attrs = [{<<"xmlns">>, ?NS_STANZAS}], children = []},
 		#xmlel{name = <<"text">>,
 		       attrs = [{<<"xmlns">>, ?NS_STANZAS}],
-		       children = [{xmlcdata, Msg1}]}]}.
+		       children = [{xmlcdata, Msg}]}]}.
 
 process_nick_in_use(StateData, String) ->
     Error = error_nick_in_use(StateData, String),
@@ -1058,7 +1092,6 @@ process_chanprivmsg(StateData, Chan, From, String) ->
 		 <<"/me ", Rest/binary>>;
 	     _ -> Msg
 	   end,
-    Msg2 = filter_message(Msg1),
     ejabberd_router:route(jid:make(iolist_to_binary(
                                           [Chan,
                                            <<"%">>,
@@ -1069,7 +1102,7 @@ process_chanprivmsg(StateData, Chan, From, String) ->
 				 attrs = [{<<"type">>, <<"groupchat">>}],
 				 children =
 				     [#xmlel{name = <<"body">>, attrs = [],
-					     children = [{xmlcdata, Msg2}]}]}).
+					     children = [{xmlcdata, Msg1}]}]}).
 
 process_channotice(StateData, Chan, From, String) ->
     [FromUser | _] = str:tokens(From, <<"!">>),
@@ -1080,7 +1113,6 @@ process_channotice(StateData, Chan, From, String) ->
 		 <<"/me ", Rest/binary>>;
 	     _ -> <<"/me NOTICE: ", Msg/binary>>
 	   end,
-    Msg2 = filter_message(Msg1),
     ejabberd_router:route(jid:make(iolist_to_binary(
                                           [Chan,
                                            <<"%">>,
@@ -1091,7 +1123,7 @@ process_channotice(StateData, Chan, From, String) ->
 				 attrs = [{<<"type">>, <<"groupchat">>}],
 				 children =
 				     [#xmlel{name = <<"body">>, attrs = [],
-					     children = [{xmlcdata, Msg2}]}]}).
+					     children = [{xmlcdata, Msg1}]}]}).
 
 process_privmsg(StateData, _Nick, From, String) ->
     [FromUser | _] = str:tokens(From, <<"!">>),
@@ -1102,7 +1134,6 @@ process_privmsg(StateData, _Nick, From, String) ->
 		 <<"/me ", Rest/binary>>;
 	     _ -> Msg
 	   end,
-    Msg2 = filter_message(Msg1),
     ejabberd_router:route(jid:make(iolist_to_binary(
                                           [FromUser,
                                            <<"!">>,
@@ -1113,7 +1144,7 @@ process_privmsg(StateData, _Nick, From, String) ->
 				 attrs = [{<<"type">>, <<"chat">>}],
 				 children =
 				     [#xmlel{name = <<"body">>, attrs = [],
-					     children = [{xmlcdata, Msg2}]}]}).
+					     children = [{xmlcdata, Msg1}]}]}).
 
 process_notice(StateData, _Nick, From, String) ->
     [FromUser | _] = str:tokens(From, <<"!">>),
@@ -1124,7 +1155,6 @@ process_notice(StateData, _Nick, From, String) ->
 		 <<"/me ", Rest/binary>>;
 	     _ -> <<"/me NOTICE: ", Msg/binary>>
 	   end,
-    Msg2 = filter_message(Msg1),
     ejabberd_router:route(jid:make(iolist_to_binary(
                                           [FromUser,
                                            <<"!">>,
@@ -1135,7 +1165,7 @@ process_notice(StateData, _Nick, From, String) ->
 				 attrs = [{<<"type">>, <<"chat">>}],
 				 children =
 				     [#xmlel{name = <<"body">>, attrs = [],
-					     children = [{xmlcdata, Msg2}]}]}).
+					     children = [{xmlcdata, Msg1}]}]}).
 
 process_version(StateData, _Nick, From) ->
     [FromUser | _] = str:tokens(From, <<"!">>),
@@ -1159,7 +1189,6 @@ process_topic(StateData, Chan, From, String) ->
     [FromUser | _] = str:tokens(From, <<"!">>),
     Msg = ejabberd_regexp:replace(String,
 				  <<".*TOPIC[^:]*:">>, <<"">>),
-    Msg1 = filter_message(Msg),
     ejabberd_router:route(jid:make(iolist_to_binary(
                                           [Chan,
                                            <<"%">>,
@@ -1170,18 +1199,17 @@ process_topic(StateData, Chan, From, String) ->
 				 attrs = [{<<"type">>, <<"groupchat">>}],
 				 children =
 				     [#xmlel{name = <<"subject">>, attrs = [],
-					     children = [{xmlcdata, Msg1}]},
+					     children = [{xmlcdata, Msg}]},
 				      #xmlel{name = <<"body">>, attrs = [],
 					     children =
 						 [{xmlcdata,
 						   <<"/me has changed the subject to: ",
-						     Msg1/binary>>}]}]}).
+						     Msg/binary>>}]}]}).
 
 process_part(StateData, Chan, From, String) ->
     [FromUser | FromIdent] = str:tokens(From, <<"!">>),
     Msg = ejabberd_regexp:replace(String,
-				  <<".*PART[^:]*:">>, <<"">>),
-    Msg1 = filter_message(Msg),
+                                  <<".*PART[^:]*:?">>, <<"">>),
     ejabberd_router:route(jid:make(iolist_to_binary(
                                           [Chan,
                                            <<"%">>,
@@ -1200,13 +1228,14 @@ process_part(StateData, Chan, From, String) ->
 							     [{<<"affiliation">>,
 							       <<"member">>},
 							      {<<"role">>,
-							       <<"none">>}],
+							       <<"none">>},
+                                                               {<<"message">>, String}],
 							 children = []}]},
 				      #xmlel{name = <<"status">>, attrs = [],
 					     children =
 						 [{xmlcdata,
                                                    list_to_binary(
-                                                     [Msg1, " (",
+                                                     [String, " (",
                                                       FromIdent, ")"])}]}]}),
     case catch dict:update(Chan,
 			   fun (Ps) -> remove_element(FromUser, Ps) end,
@@ -1219,8 +1248,7 @@ process_part(StateData, Chan, From, String) ->
 process_quit(StateData, From, String) ->
     [FromUser | FromIdent] = str:tokens(From, <<"!">>),
     Msg = ejabberd_regexp:replace(String,
-				  <<".*QUIT[^:]*:">>, <<"">>),
-    Msg1 = filter_message(Msg),
+				  <<".*QUIT[^:]*:?">>, <<"">>),
     dict:map(fun (Chan, Ps) ->
 		     case (?SETS):is_member(FromUser, Ps) of
 		       true ->
@@ -1250,7 +1278,8 @@ process_quit(StateData, From, String) ->
 										    [{<<"affiliation">>,
 										      <<"member">>},
 										     {<<"role">>,
-										      <<"none">>}],
+										      <<"none">>},
+                                                                                     {<<"message">>, String}],
 										children
 										    =
 										    []}]},
@@ -1260,7 +1289,7 @@ process_quit(StateData, From, String) ->
 								    children =
 									[{xmlcdata,
                                                                           list_to_binary(
-                                                                            [Msg1, " (",
+                                                                            [String, " (",
                                                                              FromIdent,
                                                                              ")"])}]}]}),
 			   remove_element(FromUser, Ps);
@@ -1272,7 +1301,7 @@ process_quit(StateData, From, String) ->
 
 process_join(StateData, Channel, From, _String) ->
     [FromUser | FromIdent] = str:tokens(From, <<"!">>),
-    [Chan | _] = binary:split(Channel, <<":#">>),
+    [_ , Chan] = binary:split(Channel, <<":#">>),
     ejabberd_router:route(jid:make(iolist_to_binary(
                                           [Chan,
                                            <<"%">>,
@@ -1327,20 +1356,8 @@ process_mode_o(StateData, Chan, _From, Nick,
 							 children = []}]}]}).
 
 process_kick(StateData, Chan, From, Nick, String) ->
-    Msg = lists:last(str:tokens(String, <<":">>)),
-    Msg2 = <<Nick/binary, " kicked by ", From/binary, " (",
-	     (filter_message(Msg))/binary, ")">>,
-    ejabberd_router:route(jid:make(iolist_to_binary(
-                                          [Chan,
-                                           <<"%">>,
-                                           StateData#state.server]),
-					StateData#state.host, <<"">>),
-			  StateData#state.user,
-			  #xmlel{name = <<"message">>,
-				 attrs = [{<<"type">>, <<"groupchat">>}],
-				 children =
-				     [#xmlel{name = <<"body">>, attrs = [],
-					     children = [{xmlcdata, Msg2}]}]}),
+    Msg = ejabberd_regexp:replace(String,
+                                  <<".*KICK[^:]*:">>, <<"">>),
     ejabberd_router:route(jid:make(iolist_to_binary(
                                           [Chan,
                                            <<"%">>,
@@ -1363,13 +1380,14 @@ process_kick(StateData, Chan, From, Nick, String) ->
 							 children = []},
 						  #xmlel{name = <<"status">>,
 							 attrs =
-							     [{<<"code">>,
-							       <<"307">>}],
+							     [{<<"code">>, <<"307">>},
+                                                              {<<"moderator">>, From},
+                                                              {<<"message">>, Msg}],
 							 children = []}]}]}).
 
 process_nick(StateData, From, NewNick) ->
     [FromUser | _] = str:tokens(From, <<"!">>),
-    [Nick | _] = binary:split(NewNick, <<":">>),
+    [_, Nick] = binary:split(NewNick, <<":">>),
     NewChans = dict:map(fun (Chan, Ps) ->
 				case (?SETS):is_member(FromUser, Ps) of
 				  true ->
@@ -1385,7 +1403,7 @@ process_nick(StateData, From, NewNick) ->
 								       <<"presence">>,
 								   attrs =
 								       [{<<"type">>,
-									 <<"unavailable">>}],
+									 <<"participant">>}],
 								   children =
 								       [#xmlel{name
 										   =
@@ -1417,39 +1435,6 @@ process_nick(StateData, From, NewNick) ->
 											       =
 											       [{<<"code">>,
 												 <<"303">>}],
-											   children
-											       =
-											       []}]}]}),
-				      ejabberd_router:route(jid:make(
-                                                              iolist_to_binary(
-                                                                [Chan,
-                                                                 <<"%">>,
-                                                                 StateData#state.server]),
-                                                              StateData#state.host,
-                                                              Nick),
-							    StateData#state.user,
-							    #xmlel{name =
-								       <<"presence">>,
-								   attrs = [],
-								   children =
-								       [#xmlel{name
-										   =
-										   <<"x">>,
-									       attrs
-										   =
-										   [{<<"xmlns">>,
-										     ?NS_MUC_USER}],
-									       children
-										   =
-										   [#xmlel{name
-											       =
-											       <<"item">>,
-											   attrs
-											       =
-											       [{<<"affiliation">>,
-												 <<"member">>},
-												{<<"role">>,
-												 <<"participant">>}],
 											   children
 											       =
 											       []}]}]}),
@@ -1495,7 +1480,6 @@ process_error(StateData, String) ->
 error_unknown_num(_StateData, String, Type) ->
     Msg = ejabberd_regexp:replace(String,
 				  <<".*[45][0-9][0-9] +[^ ]* +">>, <<"">>),
-    Msg1 = filter_message(Msg),
     #xmlel{name = <<"error">>,
 	   attrs = [{<<"code">>, <<"500">>}, {<<"type">>, Type}],
 	   children =
@@ -1503,7 +1487,7 @@ error_unknown_num(_StateData, String, Type) ->
 		       attrs = [{<<"xmlns">>, ?NS_STANZAS}], children = []},
 		#xmlel{name = <<"text">>,
 		       attrs = [{<<"xmlns">>, ?NS_STANZAS}],
-		       children = [{xmlcdata, Msg1}]}]}.
+		       children = [{xmlcdata, Msg}]}]}.
 
 remove_element(E, Set) ->
     case (?SETS):is_element(E, Set) of
