@@ -1235,7 +1235,7 @@ process_part(StateData, Chan, From, String) ->
 					     children =
 						 [{xmlcdata,
                                                    list_to_binary(
-                                                     [Msg, " (",
+                                                     [String, " (",
                                                       FromIdent, ")"])}]}]}),
     case catch dict:update(Chan,
 			   fun (Ps) -> remove_element(FromUser, Ps) end,
@@ -1289,7 +1289,7 @@ process_quit(StateData, From, String) ->
 								    children =
 									[{xmlcdata,
                                                                           list_to_binary(
-                                                                            [Msg, " (",
+                                                                            [String, " (",
                                                                              FromIdent,
                                                                              ")"])}]}]}),
 			   remove_element(FromUser, Ps);
